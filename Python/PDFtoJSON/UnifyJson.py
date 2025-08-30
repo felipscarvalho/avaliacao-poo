@@ -4,11 +4,6 @@ import re
 
 
 def get_year_from_filename(filename):
-    """
-    Extrai o ano de um nome de arquivo.
-    Converte anos de 2 dígitos (ex: 19) para 4 dígitos (ex: 2019).
-    """
-    # Regex para encontrar qualquer sequência de dígitos no nome do arquivo
     match = re.search(r"(\d+)", filename)
     if match:
         year_str = match.group(1)
@@ -20,11 +15,6 @@ def get_year_from_filename(filename):
 
 
 def unify_json_files():
-    """
-    Encontra todos os arquivos .json no diretório, os lê e os unifica
-    em um único arquivo JSON, organizados por ano.
-    """
-    # Encontra todos os arquivos que terminam com .json no diretório atual
     json_files = [
         f
         for f in os.listdir(".")
@@ -59,18 +49,15 @@ def unify_json_files():
         except Exception as e:
             print(f"Ocorreu um erro inesperado ao processar '{file_name}': {e}")
 
-    # Define o nome do arquivo de saída
     output_filename = "APROVADOS_UNIFICADO.json"
 
     try:
         with open(output_filename, "w", encoding="utf-8") as f:
-            # indent=2 para uma formatação mais compacta, mas ainda legível
             json.dump(unified_data, f, ensure_ascii=False, indent=2)
         print(f"\nSucesso! Todos os dados foram unificados em '{output_filename}'.")
     except Exception as e:
         print(f"\nOcorreu um erro ao salvar o arquivo unificado: {e}")
 
 
-# --- Ponto de Entrada do Script ---
 if __name__ == "__main__":
     unify_json_files()

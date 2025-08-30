@@ -6,22 +6,16 @@ from collections import defaultdict
 
 
 def clean_repeated_chars(text):
-    """Remove caracteres duplicados que são artefatos da extração do PDF."""
     return re.sub(r"(.)\1+", r"\1", text)
 
 
 def convert_pdf_to_json(pdf_path):
-    """
-    Converte um PDF de aprovados para JSON com uma lógica de extração universal,
-    incluindo uma busca precisa por siglas de estados brasileiros.
-    """
     print(f"Iniciando a conversão do arquivo: '{pdf_path}'...")
 
     if not os.path.exists(pdf_path):
         print("  -> Erro: Arquivo não encontrado.")
         return
 
-    # **CORREÇÃO: Lista definitiva de siglas de estados brasileiros**
     BRAZILIAN_STATES = [
         "AC",
         "AL",
