@@ -3,7 +3,6 @@ import os
 
 
 class DataExtractor:
-    # mapeamento de demandas para aninhar as cotas equivalentes, mas com nomes diferentes
     DEMAND_MAP = {
         "ampla_concorrencia": {"AC", "A0", "AD"},
         "escola_publica_baixa_renda": {"L1", "LB_EP"},

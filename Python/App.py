@@ -1,4 +1,3 @@
-import sys
 import re
 from collections import defaultdict
 from statistics import mean
@@ -12,11 +11,9 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QComboBox,
     QStackedWidget,
-    QApplication,
 )
 from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
-
 from DataExtractor import DataExtractor
 from Graphs import GeradorDeGraficos
 
@@ -25,7 +22,7 @@ class JanelaPrincipal(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Análise do SISU-UFS")
-        self.setGeometry(100, 100, 1200, 800)
+        self.setGeometry(100, 100, 1400, 800)
 
         self.extratorDeDados = DataExtractor()
         self.geradorDeGraficos = GeradorDeGraficos()
@@ -35,79 +32,36 @@ class JanelaPrincipal(QMainWindow):
 
         self.paginaPrincipal = self._criarPaginaPrincipal()
         self.paginaAnaliseNotaCorte = self._criarPaginaGraficoLinha()
+        self.paginaAnaliseDemandas = self._criarPaginaGraficoBarra()
 
         self.stackedWidget.addWidget(self.paginaPrincipal)
         self.stackedWidget.addWidget(self.paginaAnaliseNotaCorte)
+        self.stackedWidget.addWidget(self.paginaAnaliseDemandas)
 
     def _criarPaginaPrincipal(self):
         pagina = QWidget()
         layoutPrincipal = QVBoxLayout(pagina)
-
-        # --- Layout do Topo ---
         layoutTopo = QHBoxLayout()
         titulo = QLabel("Visão Geral: Perfil dos Aprovados")
         titulo.setFont(QFont("Arial", 20, QFont.Weight.Bold))
-        botaoIrAnalise = QPushButton("Analisar Nota de Corte →")
-        botaoIrAnalise.clicked.connect(
+
+        # Botões de Navegação
+        botaoIrAnaliseCorte = QPushButton("Analisar Nota de Corte →")
+        botaoIrAnaliseCorte.clicked.connect(
             lambda: self.stackedWidget.setCurrentWidget(self.paginaAnaliseNotaCorte)
         )
+        botaoIrAnaliseDemanda = QPushButton("Analisar Demandas →")
+        botaoIrAnaliseDemanda.clicked.connect(
+            lambda: self.stackedWidget.setCurrentWidget(self.paginaAnaliseDemandas)
+        )
+
         layoutTopo.addWidget(titulo)
         layoutTopo.addStretch()
-        layoutTopo.addWidget(botaoIrAnalise)
+        layoutTopo.addWidget(botaoIrAnaliseCorte)
+        layoutTopo.addWidget(botaoIrAnaliseDemanda)
         layoutPrincipal.addLayout(layoutTopo)
 
-        # --- Layout dos Filtros ---
-        layoutFiltros = QHBoxLayout()
-        # Filtro 1: Tipo de Análise (Estado ou Campus)
-        containerTipoAnalise, self.comboTipoAnalise = self._criarFiltroComboBox(
-            "Tipo de Análise:"
-        )
-        self.comboTipoAnalise.addItems(
-            ["Por Estado (em um Curso)", "Por Campus (Geral)"]
-        )
-
-        # Filtro 2: Curso (só aparece quando necessário)
-        self.containerFiltroCurso, self.comboCursoPizza = self._criarFiltroComboBox(
-            "Filtrar por Curso:"
-        )
-
-        layoutFiltros.addWidget(containerTipoAnalise)
-        layoutFiltros.addWidget(self.containerFiltroCurso)
-        layoutFiltros.addStretch()
-        layoutPrincipal.addLayout(layoutFiltros)
-
-        # --- Layout do Gráfico ---
-        self.layoutGraficoPizza = QVBoxLayout()
-        layoutPrincipal.addLayout(self.layoutGraficoPizza)
-
-        # Conecta os sinais para atualizar a UI dinamicamente
-        self.comboTipoAnalise.currentTextChanged.connect(self._atualizarUIPrincipal)
-        self.comboCursoPizza.currentTextChanged.connect(self._atualizarUIPrincipal)
-
-        self._popularFiltroCursosPizza()
-        self._atualizarUIPrincipal()
-
-        return pagina
-
-    def _atualizarUIPrincipal(self):
-        """Controla a visibilidade dos filtros e qual gráfico é exibido."""
-        tipoAnalise = self.comboTipoAnalise.currentText()
-
-        if tipoAnalise == "Por Estado (em um Curso)":
-            self.containerFiltroCurso.setVisible(True)
-            self._atualizarGraficoEstado()
-        else:  # "Por Campus (Geral)"
-            self.containerFiltroCurso.setVisible(False)
-            self._atualizarGraficoCampus()
-
-    def _atualizarGraficoCampus(self):
-        """Calcula e exibe o gráfico de pizza por campus."""
-        # Limpa o gráfico anterior
-        while self.layoutGraficoPizza.count():
-            item = self.layoutGraficoPizza.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
+        layoutGraficos = QHBoxLayout()
         todosOsAlunos = [
             aluno
             for listaAnual in self.extratorDeDados.data.values()
@@ -117,61 +71,48 @@ class JanelaPrincipal(QMainWindow):
         for aluno in todosOsAlunos:
             if aluno.get("campus", "N/A") != "N/A":
                 contagemCampus[aluno["campus"]] += 1
-
         graficoCampus = self.geradorDeGraficos.criarGraficoDePizza(
-            dados=contagemCampus, titulo="Porcentagem de Aprovados por Campus (Geral)"
+            dados=contagemCampus, titulo="Aprovados por Campus (Geral)"
         )
-        self.layoutGraficoPizza.addWidget(graficoCampus)
+        layoutGraficos.addWidget(graficoCampus)
+        containerGraficoEstado = QWidget()
+        layoutContainerEstado = QVBoxLayout(containerGraficoEstado)
+        containerFiltro, self.comboCursoEstado = self._criarFiltroComboBox(
+            "Filtrar por Curso:"
+        )
+        self.comboCursoEstado.currentTextChanged.connect(self._atualizarGraficoEstado)
+        self.layoutGraficoEstado = QVBoxLayout()
+        layoutContainerEstado.addWidget(containerFiltro)
+        layoutContainerEstado.addLayout(self.layoutGraficoEstado)
+        layoutGraficos.addWidget(containerGraficoEstado)
+        layoutPrincipal.addLayout(layoutGraficos)
+        self._popularFiltrosCursos(self.comboCursoEstado)
+        self._atualizarGraficoEstado()
+        return pagina
 
     def _atualizarGraficoEstado(self):
-        """Calcula e exibe o gráfico de pizza por estado para um curso."""
-        while self.layoutGraficoPizza.count():
-            item = self.layoutGraficoPizza.takeAt(0)
+        while self.layoutGraficoEstado.count():
+            item = self.layoutGraficoEstado.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-
-        cursoSelecionado = self.comboCursoPizza.currentText()
+        cursoSelecionado = self.comboCursoEstado.currentText()
         if not cursoSelecionado:
             return
-
         alunosDoCurso = self.extratorDeDados.getData(course=cursoSelecionado)
-
         contagemEstado = defaultdict(int)
         for aluno in alunosDoCurso:
             if aluno.get("estado", "N/A") != "N/A":
                 contagemEstado[aluno["estado"]] += 1
-
         graficoEstado = self.geradorDeGraficos.criarGraficoDePizza(
             dados=contagemEstado,
             titulo=f"Origem (Estado) dos Aprovados em\n{cursoSelecionado}",
         )
-        self.layoutGraficoPizza.addWidget(graficoEstado)
-
-    def _popularFiltroCursosPizza(self):
-        """Popula o ComboBox de cursos com dados limpos."""
-        todosOsAlunos = [
-            aluno
-            for listaAnual in self.extratorDeDados.data.values()
-            for aluno in listaAnual
-        ]
-
-        # Conjunto de todas as siglas de demanda para limpeza
-        todasAsDemandas = set()
-        for codes in self.extratorDeDados.DEMAND_MAP.values():
-            todasAsDemandas.update(codes)
-
-        dadosBrutosCursos = sorted(
-            {s.get("curso", "") for s in todosOsAlunos if s.get("curso", "")}
-        )
-
-        cursos = [s for s in dadosBrutosCursos if not re.search(r"\d", s)]
-
-        self.comboCursoPizza.addItems(cursos)
+        self.layoutGraficoEstado.addWidget(graficoEstado)
 
     def _criarPaginaGraficoLinha(self):
         pagina = QWidget()
         layoutPrincipal = QVBoxLayout(pagina)
-        headerWidget = self._criarHeaderAnalise()
+        headerWidget = self._criarHeaderAnaliseLinha()
         layoutPrincipal.addWidget(headerWidget)
         self.layoutGraficoLinha = QVBoxLayout()
         layoutPrincipal.addLayout(self.layoutGraficoLinha)
@@ -179,7 +120,7 @@ class JanelaPrincipal(QMainWindow):
         self._atualizarGraficoLinha()
         return pagina
 
-    def _criarHeaderAnalise(self):
+    def _criarHeaderAnaliseLinha(self):
         headerWidget = QWidget()
         layoutHeader = QVBoxLayout(headerWidget)
         layoutTitulo = QHBoxLayout()
@@ -205,37 +146,6 @@ class JanelaPrincipal(QMainWindow):
         )
         layoutHeader.addLayout(layoutFiltros)
         return headerWidget
-
-    def _popularFiltrosLinha(self):
-        todosOsAlunos = [
-            aluno
-            for listaAnual in self.extratorDeDados.data.values()
-            for aluno in listaAnual
-        ]
-
-        dadosBrutosCursos = sorted(
-            {s.get("curso", "") for s in todosOsAlunos if s.get("curso", "")}
-        )
-
-        cursos = [s for s in dadosBrutosCursos if not re.search(r"\d", s)]
-
-        demandas = sorted(
-            {
-                "AC",
-                "LB_EP",
-                "LB_PPI",
-                "LI_PPI",
-                "LI_EP",
-                "LB_PCD",
-                "LI_PCD",
-                "V",
-                "LB_Q",
-                "LI_Q",
-            }
-        )
-
-        self.comboCursoLinha.addItems(cursos)
-        self.comboDemandaLinha.addItems(demandas)
 
     def _atualizarGraficoLinha(self):
         while self.layoutGraficoLinha.count():
@@ -268,15 +178,148 @@ class JanelaPrincipal(QMainWindow):
         )
         self.layoutGraficoLinha.addWidget(widgetGrafico)
 
+    def _criarPaginaGraficoBarra(self):
+        pagina = QWidget()
+        layoutPrincipal = QVBoxLayout(pagina)
+
+        headerWidget = self._criarHeaderAnaliseBarra()
+        layoutPrincipal.addWidget(headerWidget)
+
+        self.layoutGraficoBarra = QVBoxLayout()
+        layoutPrincipal.addLayout(self.layoutGraficoBarra)
+
+        self._popularFiltrosBarra()
+        self._atualizarGraficoBarra()
+        return pagina
+
+    def _criarHeaderAnaliseBarra(self):
+        headerWidget = QWidget()
+        layoutHeader = QVBoxLayout(headerWidget)
+        layoutTitulo = QHBoxLayout()
+        rotuloTitulo = QLabel("Análise de Competitividade por Demanda")
+        rotuloTitulo.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        botaoVoltar = QPushButton("← Voltar para Visão Geral")
+        botaoVoltar.clicked.connect(
+            lambda: self.stackedWidget.setCurrentWidget(self.paginaPrincipal)
+        )
+        layoutTitulo.addWidget(rotuloTitulo)
+        layoutTitulo.addStretch()
+        layoutTitulo.addWidget(botaoVoltar)
+        layoutHeader.addLayout(layoutTitulo)
+        layoutFiltros = QHBoxLayout()
+        containerCurso, self.comboCursoBarra = self._criarFiltroComboBox(
+            "Selecione o Curso:"
+        )
+        self.comboCursoBarra.currentTextChanged.connect(self._atualizarGraficoBarra)
+        layoutFiltros.addWidget(containerCurso)
+        layoutFiltros.addStretch()
+        layoutHeader.addLayout(layoutFiltros)
+        return headerWidget
+
+    def _atualizarGraficoBarra(self):
+        while self.layoutGraficoBarra.count():
+            item = self.layoutGraficoBarra.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        cursoSelecionado = self.comboCursoBarra.currentText()
+        if not cursoSelecionado:
+            return
+
+        alunosDoCurso = self.extratorDeDados.getData(course=cursoSelecionado)
+
+        codigoParaGrupo = {
+            codigo: grupo
+            for grupo, codigos in self.extratorDeDados.DEMAND_MAP.items()
+            for codigo in codigos
+            if codigo
+        }
+        nomesDeExibicao = self._criarNomesDeExibicaoParaDemandas()
+
+        notasPorGrupo = defaultdict(list)
+        for aluno in alunosDoCurso:
+            demanda = aluno.get("concorrencia", "N/A").upper()
+            notaStr = aluno.get("nota", "N/A").replace(",", ".")
+
+            if demanda and demanda in codigoParaGrupo and notaStr != "N/A":
+                grupo = codigoParaGrupo[demanda]
+                try:
+                    notasPorGrupo[grupo].append(float(notaStr))
+                except ValueError:
+                    continue
+
+        dadosParaGrafico = {}
+        for grupo, notas in notasPorGrupo.items():
+            if notas:
+                nomeDeExibicao = nomesDeExibicao.get(grupo, grupo)
+                if nomeDeExibicao:
+                    dadosParaGrafico[nomeDeExibicao] = min(notas)
+
+        widgetGrafico = self.geradorDeGraficos.criarGraficoDeBarra(
+            dados=dadosParaGrafico, titulo=cursoSelecionado
+        )
+        self.layoutGraficoBarra.addWidget(widgetGrafico)
+
     def _criarFiltroComboBox(self, textoRotulo):
         container = QWidget()
         layout = QHBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(QLabel(textoRotulo))
         comboBox = QComboBox()
-        comboBox.setMinimumWidth(250)
+        comboBox.setMinimumWidth(300)
         layout.addWidget(comboBox)
         return container, comboBox
+
+    def _popularFiltrosCursos(self, comboBox):
+        todosOsAlunos = [
+            aluno
+            for listaAnual in self.extratorDeDados.data.values()
+            for aluno in listaAnual
+        ]
+
+        dadosBrutosCursos = sorted(
+            {s.get("curso", "") for s in todosOsAlunos if s.get("curso", "")}
+        )
+
+        cursos = [s for s in dadosBrutosCursos if not re.search(r"\d", s)]
+        comboBox.addItems(cursos)
+
+    def _popularFiltrosLinha(self):
+        self._popularFiltrosCursos(self.comboCursoLinha)
+        todosOsAlunos = [
+            aluno
+            for listaAnual in self.extratorDeDados.data.values()
+            for aluno in listaAnual
+        ]
+        demandas = sorted(
+            {
+                s.get("concorrencia", "")
+                for s in todosOsAlunos
+                if s.get("concorrencia", "")
+            }
+        )
+        self.comboDemandaLinha.addItems(demandas)
+
+    def _popularFiltrosBarra(self):
+        self._popularFiltrosCursos(self.comboCursoBarra)
+
+    def _criarNomesDeExibicaoParaDemandas(self):
+        mapa = {}
+        for grupo, codigos in self.extratorDeDados.DEMAND_MAP.items():
+            if grupo == "ampla_concorrencia":
+                mapa[grupo] = "AC"
+                continue
+
+            prioridade = [
+                c for c in codigos if "_" in c or c.startswith("V") or c == "L14"
+            ]
+
+            if prioridade:
+                mapa[grupo] = prioridade[0]
+            elif codigos:
+                mapa[grupo] = sorted(list(codigos))[0]
+            else:
+                mapa[grupo] = grupo
+        return mapa
 
     def _extrairAnoDaInscricao(self, inscricao):
         if inscricao and len(inscricao) >= 4:
@@ -284,10 +327,3 @@ class JanelaPrincipal(QMainWindow):
             if primeirosDigitos.isdigit():
                 return "20" + primeirosDigitos
         return None
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    janela = JanelaPrincipal()
-    janela.show()
-    sys.exit(app.exec())
