@@ -124,14 +124,10 @@ public class ChartDataInitializer {
         return mediasPorCotaCursoAno;
     }
     
-    private Map<String, Double> separarIntervaloNota(int ano) {
+    private Map<String, Integer> separarIntervaloNota(int ano) {
         List<Student> dadosStudents = separarDadosPorAno(ano);
         List<String> intervalos = new ArrayList<>(List.of("401-500", "501-600", "601-700", "701-800", "801-900"));
         Map<String, Integer> alunosPorIntervaloNotas = new HashMap<>();
-        Map<String, Double> totalNotasPorIntervaloNotas = new HashMap<>();
-        Map<String, Double> mediasPorIntervaloNotas = new HashMap<>();
-        
-        
         
         for(Student student : dadosStudents) {
             double media = student.getMedia();
@@ -141,23 +137,18 @@ public class ChartDataInitializer {
                 int min = Integer.parseInt(range[0]);
                 int max = Integer.parseInt(range[1]);
                 
+                
                 if (media > min && media < max){
                     if(alunosPorIntervaloNotas.containsKey(intervalo)){
                         alunosPorIntervaloNotas.put(intervalo, alunosPorIntervaloNotas.get(intervalo) + 1);
-                        totalNotasPorIntervaloNotas.put(intervalo, totalNotasPorIntervaloNotas.get(intervalo) + student.getMedia());
                     } else {
                         alunosPorIntervaloNotas.put(intervalo, 1);
-                        totalNotasPorIntervaloNotas.put(intervalo, student.getMedia());
                     }
                 }
             }
         }
         
-        for (String intervalo : intervalos) {
-            mediasPorIntervaloNotas.put(intervalo, totalNotasPorIntervaloNotas.get(intervalo) / alunosPorIntervaloNotas.get(intervalo));
-        }
-        
-        return mediasPorIntervaloNotas;
+        return alunosPorIntervaloNotas;
     }
     
     public List<String> listarCursos() {
@@ -205,7 +196,7 @@ public class ChartDataInitializer {
     }
     
     public ObservableList<PieChart.Data> prepararDadosNotasPieChart(int ano) {
-        Map<String, Double> dadosStudents = separarIntervaloNota(ano);
+        Map<String, Integer> dadosStudents = separarIntervaloNota(ano);
         ObservableList<PieChart.Data> dadosPieChart = FXCollections.observableArrayList();       
         
         dadosStudents.forEach((curso, alunos) -> {
