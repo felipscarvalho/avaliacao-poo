@@ -1,8 +1,8 @@
 from PyQt6.QtWidgets import QApplication
-from App import JanelaPrincipal
+from App import App
 import sys
 
 app = QApplication(sys.argv)
-janela = JanelaPrincipal()
-janela.show()
+appExec = App()
+appExec.show()
 sys.exit(app.exec())

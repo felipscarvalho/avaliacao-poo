@@ -1,7 +1,5 @@
-import re
 from collections import defaultdict
 from statistics import mean
-
 from PyQt6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -9,321 +7,455 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QComboBox,
     QStackedWidget,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QComboBox,
+    QScrollArea,
 )
 from PyQt6.QtGui import QFont
 from PyQt6.QtCore import Qt
-from DataExtractor import DataExtractor
-from Graphs import GeradorDeGraficos
+
+from ExtratorDeDados import ExtratorDeDados
+from Graficos import GeradorDeGraficos
+
+ESTILO_BOTAO_HEADER = """
+    QPushButton {
+        background-color: transparent;
+        border: none;
+        padding: 10px 15px;
+        font-size: 15px;
+        font-weight: bold;
+        color: #555;
+    }
+    QPushButton:hover {
+        color: #000;
+    }
+    QPushButton:checked {
+        color: #007bff;
+        border-bottom: 3px solid #007bff;
+    }
+"""
+
+ESTILO_BOTAO_TABLE = """
+    QPushButton {
+        background-color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: bold;
+        color: blue;
+        min-height: 50;
+        min-width: 100
+    }
+"""
 
 
-class JanelaPrincipal(QMainWindow):
+class App(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Análise do SISU-UFS")
-        self.setGeometry(100, 100, 1400, 800)
+        self.setWindowTitle("SISU BI")
+        self.setGeometry(100, 100, 1400, 900)
 
-        self.extratorDeDados = DataExtractor()
+        self.extratorDeDados = ExtratorDeDados()
         self.geradorDeGraficos = GeradorDeGraficos()
 
+        widgetCentral = QWidget()
+        self.setCentralWidget(widgetCentral)
+        layoutPrincipal = QVBoxLayout(widgetCentral)
+        layoutPrincipal.setSpacing(0)
+        layoutPrincipal.setContentsMargins(0, 0, 0, 0)
+
+        header = self._criarHeader()
+        layoutPrincipal.addWidget(header)
+
         self.stackedWidget = QStackedWidget()
-        self.setCentralWidget(self.stackedWidget)
+        layoutPrincipal.addWidget(self.stackedWidget)
 
-        self.paginaPrincipal = self._criarPaginaPrincipal()
-        self.paginaAnaliseNotaCorte = self._criarPaginaGraficoLinha()
-        self.paginaAnaliseDemandas = self._criarPaginaGraficoBarra()
+        self.paginaDashboard = self._criarPaginaDashboard()
+        self.paginaEstudantes = self._criarPaginaEstudantes()
+        self.paginaGraficos = self._criarPaginaGraficos()
 
-        self.stackedWidget.addWidget(self.paginaPrincipal)
-        self.stackedWidget.addWidget(self.paginaAnaliseNotaCorte)
-        self.stackedWidget.addWidget(self.paginaAnaliseDemandas)
+        self.stackedWidget.addWidget(self.paginaDashboard)
+        self.stackedWidget.addWidget(self.paginaEstudantes)
+        self.stackedWidget.addWidget(self.paginaGraficos)
 
-    def _criarPaginaPrincipal(self):
-        pagina = QWidget()
-        layoutPrincipal = QVBoxLayout(pagina)
-        layoutTopo = QHBoxLayout()
-        titulo = QLabel("Visão Geral: Perfil dos Aprovados")
-        titulo.setFont(QFont("Arial", 20, QFont.Weight.Bold))
+        self.botaoDashboard.setChecked(True)
+        self.stackedWidget.setCurrentWidget(self.paginaDashboard)
 
-        # Botões de Navegação
-        botaoIrAnaliseCorte = QPushButton("Analisar Nota de Corte →")
-        botaoIrAnaliseCorte.clicked.connect(
-            lambda: self.stackedWidget.setCurrentWidget(self.paginaAnaliseNotaCorte)
-        )
-        botaoIrAnaliseDemanda = QPushButton("Analisar Demandas →")
-        botaoIrAnaliseDemanda.clicked.connect(
-            lambda: self.stackedWidget.setCurrentWidget(self.paginaAnaliseDemandas)
-        )
+    def _mudarDeTela(self, indice, botaoPressionado):
+        self.stackedWidget.setCurrentIndex(indice)
+        for botao in self.botoesHeader:
+            botao.setChecked(botao == botaoPressionado)
 
-        layoutTopo.addWidget(titulo)
-        layoutTopo.addStretch()
-        layoutTopo.addWidget(botaoIrAnaliseCorte)
-        layoutTopo.addWidget(botaoIrAnaliseDemanda)
-        layoutPrincipal.addLayout(layoutTopo)
-
-        layoutGraficos = QHBoxLayout()
-        todosOsAlunos = [
-            aluno
-            for listaAnual in self.extratorDeDados.data.values()
-            for aluno in listaAnual
-        ]
-        contagemCampus = defaultdict(int)
-        for aluno in todosOsAlunos:
-            if aluno.get("campus", "N/A") != "N/A":
-                contagemCampus[aluno["campus"]] += 1
-        graficoCampus = self.geradorDeGraficos.criarGraficoDePizza(
-            dados=contagemCampus, titulo="Aprovados por Campus (Geral)"
-        )
-        layoutGraficos.addWidget(graficoCampus)
-        containerGraficoEstado = QWidget()
-        layoutContainerEstado = QVBoxLayout(containerGraficoEstado)
-        containerFiltro, self.comboCursoEstado = self._criarFiltroComboBox(
-            "Filtrar por Curso:"
-        )
-        self.comboCursoEstado.currentTextChanged.connect(self._atualizarGraficoEstado)
-        self.layoutGraficoEstado = QVBoxLayout()
-        layoutContainerEstado.addWidget(containerFiltro)
-        layoutContainerEstado.addLayout(self.layoutGraficoEstado)
-        layoutGraficos.addWidget(containerGraficoEstado)
-        layoutPrincipal.addLayout(layoutGraficos)
-        self._popularFiltrosCursos(self.comboCursoEstado)
-        self._atualizarGraficoEstado()
-        return pagina
-
-    def _atualizarGraficoEstado(self):
-        while self.layoutGraficoEstado.count():
-            item = self.layoutGraficoEstado.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        cursoSelecionado = self.comboCursoEstado.currentText()
-        if not cursoSelecionado:
-            return
-        alunosDoCurso = self.extratorDeDados.getData(course=cursoSelecionado)
-        contagemEstado = defaultdict(int)
-        for aluno in alunosDoCurso:
-            if aluno.get("estado", "N/A") != "N/A":
-                contagemEstado[aluno["estado"]] += 1
-        graficoEstado = self.geradorDeGraficos.criarGraficoDePizza(
-            dados=contagemEstado,
-            titulo=f"Origem (Estado) dos Aprovados em\n{cursoSelecionado}",
-        )
-        self.layoutGraficoEstado.addWidget(graficoEstado)
-
-    def _criarPaginaGraficoLinha(self):
-        pagina = QWidget()
-        layoutPrincipal = QVBoxLayout(pagina)
-        headerWidget = self._criarHeaderAnaliseLinha()
-        layoutPrincipal.addWidget(headerWidget)
-        self.layoutGraficoLinha = QVBoxLayout()
-        layoutPrincipal.addLayout(self.layoutGraficoLinha)
-        self._popularFiltrosLinha()
-        self._atualizarGraficoLinha()
-        return pagina
-
-    def _criarHeaderAnaliseLinha(self):
+    def _criarHeader(self):
         headerWidget = QWidget()
-        layoutHeader = QVBoxLayout(headerWidget)
-        layoutTitulo = QHBoxLayout()
-        rotuloTitulo = QLabel("Evolução da Nota Média por Ano")
-        rotuloTitulo.setFont(QFont("Arial", 16, QFont.Weight.Bold))
-        botaoVoltar = QPushButton("← Voltar para Visão Geral")
-        botaoVoltar.clicked.connect(
-            lambda: self.stackedWidget.setCurrentWidget(self.paginaPrincipal)
+        headerWidget.setFixedHeight(70)
+        headerWidget.setStyleSheet(
+            "background-color: #ffffff; border-bottom: 1px solid #dcdcdc;"
         )
-        layoutTitulo.addWidget(rotuloTitulo)
-        layoutTitulo.addStretch()
-        layoutTitulo.addWidget(botaoVoltar)
-        layoutHeader.addLayout(layoutTitulo)
-        layoutFiltros = QHBoxLayout()
-        containerCurso, self.comboCursoLinha = self._criarFiltroComboBox("Curso:")
-        containerDemanda, self.comboDemandaLinha = self._criarFiltroComboBox("Demanda:")
-        botaoGerarGrafico = QPushButton("Gerar Gráfico")
-        botaoGerarGrafico.clicked.connect(self._atualizarGraficoLinha)
-        layoutFiltros.addWidget(containerCurso)
-        layoutFiltros.addWidget(containerDemanda)
-        layoutFiltros.addWidget(
-            botaoGerarGrafico, alignment=Qt.AlignmentFlag.AlignBottom
+
+        layoutHeader = QHBoxLayout(headerWidget)
+        layoutHeader.setContentsMargins(20, 0, 20, 0)
+
+        titulo = QLabel("SISU BI")
+        titulo.setFont(QFont("Arial", 18, QFont.Weight.Bold))
+        titulo.setStyleSheet("color: #007bff;")
+
+        layoutHeader.addWidget(titulo)
+        layoutHeader.addStretch()
+
+        self.botaoDashboard = QPushButton("Dashboard")
+        self.botaoEstudantes = QPushButton("Estudantes")
+        self.botaoGraficos = QPushButton("Gráficos")
+
+        self.botoesHeader = [
+            self.botaoDashboard,
+            self.botaoEstudantes,
+            self.botaoGraficos,
+        ]
+
+        for botao in self.botoesHeader:
+            botao.setStyleSheet(ESTILO_BOTAO_HEADER)
+            botao.setCheckable(True)
+            layoutHeader.addWidget(botao)
+
+        self.botaoDashboard.clicked.connect(
+            lambda: self._mudarDeTela(0, self.botaoDashboard)
         )
-        layoutHeader.addLayout(layoutFiltros)
+        self.botaoEstudantes.clicked.connect(
+            lambda: self._mudarDeTela(1, self.botaoEstudantes)
+        )
+        self.botaoGraficos.clicked.connect(
+            lambda: self._mudarDeTela(2, self.botaoGraficos)
+        )
+
         return headerWidget
 
-    def _atualizarGraficoLinha(self):
-        while self.layoutGraficoLinha.count():
-            item = self.layoutGraficoLinha.takeAt(0)
+    def _criarPaginaDashboard(self):
+        paginaDashboard = QWidget()
+
+        layoutPagina = QVBoxLayout(paginaDashboard)
+        layoutPagina.setContentsMargins(50, 50, 50, 50)
+        layoutPagina.addStretch(1)
+
+        rotuloTitulo = QLabel("Bem-Vindo ao Sistema!")
+        rotuloTitulo.setFont(QFont("Arial", 28, QFont.Weight.Bold))
+        rotuloTitulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        layoutPagina.addWidget(rotuloTitulo)
+
+        layoutBotoes = QHBoxLayout()
+        layoutBotoes.addStretch(1)
+
+        mediaGeral = self.extratorDeDados.getMediaGeral()
+
+        container1 = QPushButton(
+            f"Número de Aprovados: {len(self.extratorDeDados.getDados())}"
+        )
+        container2 = QPushButton("Anos coletados: 6")
+        container3 = QPushButton(f"Média Geral: {mediaGeral:.1f}")
+
+        for botao in [container1, container2, container3]:
+            botao.setStyleSheet(ESTILO_BOTAO_TABLE)
+            botao.setCheckable(False)
+
+        layoutBotoes.addWidget(container1)
+        layoutBotoes.addWidget(container2)
+        layoutBotoes.addWidget(container3)
+        layoutBotoes.addStretch(1)
+
+        layoutPagina.addLayout(layoutBotoes)
+
+        rotuloSubtitulo = QLabel("Selecione uma das Abas de navegação para começar")
+        rotuloSubtitulo.setFont(QFont("Arial", 14))
+        rotuloSubtitulo.setStyleSheet("color: #6c757d;")
+        rotuloSubtitulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        layoutPagina.addWidget(rotuloSubtitulo)
+        layoutPagina.addStretch(1)
+
+        return paginaDashboard
+
+    def _criarPaginaEstudantes(self):
+        pagina = QWidget()
+        layoutPrincipal = QVBoxLayout(pagina)
+
+        self.tabelaEstudantes = QTableWidget()
+        self.tabelaEstudantes.setSortingEnabled(True)
+        self.tabelaEstudantes.setAlternatingRowColors(True)
+
+        layoutPrincipal.addWidget(self.tabelaEstudantes)
+
+        self._atualizarTabelaEstudantes()
+
+        return pagina
+
+    def _atualizarTabelaEstudantes(self):
+        self._popularTabela(self.tabelaEstudantes, self.extratorDeDados.getDados())
+
+    def _popularTabela(self, tabela, dados):
+        tabela.setRowCount(0)
+        if not dados:
+            return
+
+        headers = [
+            "Ano",
+            "Inscrição",
+            "Nome",
+            "Curso",
+            "Campus",
+            "Cota",
+            "Nota",
+            "Classificação",
+            "Estado",
+        ]
+
+        tabela.setColumnCount(len(headers))
+        tabela.setHorizontalHeaderLabels(headers)
+        tabela.setRowCount(len(dados))
+
+        for linha, aluno in enumerate(dados):
+            tabela.setItem(linha, 0, QTableWidgetItem(aluno.get("ano")))
+            tabela.setItem(linha, 1, QTableWidgetItem(aluno.get("inscricao")))
+            tabela.setItem(linha, 2, QTableWidgetItem(aluno.get("nome")))
+            tabela.setItem(linha, 3, QTableWidgetItem(aluno.get("curso")))
+            tabela.setItem(linha, 4, QTableWidgetItem(aluno.get("campus")))
+            tabela.setItem(linha, 5, QTableWidgetItem(aluno.get("cota")))
+            tabela.setItem(linha, 6, QTableWidgetItem(aluno.get("nota")))
+            tabela.setItem(linha, 7, QTableWidgetItem(aluno.get("classificacao")))
+            tabela.setItem(linha, 8, QTableWidgetItem(aluno.get("estado")))
+
+        tabela.resizeColumnsToContents()
+        tabela.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Stretch
+        )
+        tabela.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.ResizeMode.Stretch
+        )
+
+    def _criarPaginaGraficos(self):
+        pagina = QWidget()
+        layoutPrincipal = QVBoxLayout(pagina)
+
+        scrollArea = QScrollArea()
+        scrollArea.setWidgetResizable(True)
+        layoutPrincipal.addWidget(scrollArea)
+
+        scrollContent = QWidget()
+        scrollArea.setWidget(scrollContent)
+
+        layoutScroll = QVBoxLayout(scrollContent)
+
+        containerLinhas = QWidget()
+        layoutLinhas = QVBoxLayout(containerLinhas)
+
+        layoutFiltroLinhas = QHBoxLayout()
+        layoutFiltroLinhas.addWidget(
+            QLabel("Análise de Nota Media de Cotas por Curso:")
+        )
+
+        self.comboCursoGraficos = QComboBox()
+        self.comboCursoGraficos.setMinimumWidth(300)
+
+        layoutFiltroLinhas.addWidget(self.comboCursoGraficos)
+        layoutFiltroLinhas.addStretch()
+
+        self.layoutGraficoMultiLinha = QVBoxLayout()
+        layoutLinhas.addLayout(layoutFiltroLinhas)
+        layoutLinhas.addLayout(self.layoutGraficoMultiLinha)
+        layoutScroll.addWidget(containerLinhas)
+
+        containerInferior = QWidget()
+        layoutInferior = QVBoxLayout(containerInferior)
+
+        filtroAnoLayout = QHBoxLayout()
+        filtroAnoLayout.addStretch()
+        filtroAnoLayout.addWidget(
+            QLabel("Filtrar Gráficos de Média e Distribuição por Ano:")
+        )
+
+        self.comboAnoGraficosAgrupados = QComboBox()
+        self.comboAnoGraficosAgrupados.setMinimumWidth(200)
+
+        filtroAnoLayout.addWidget(self.comboAnoGraficosAgrupados)
+        filtroAnoLayout.addStretch()
+        layoutInferior.addLayout(filtroAnoLayout)
+
+        # Layout para os gráficos de barras e pizza
+        layoutGraficosVerticais = QVBoxLayout()
+        self.layoutGraficoBarraMedia = QVBoxLayout()
+        self.layoutGraficoPizzaNotas = QVBoxLayout()
+
+        layoutGraficosVerticais.addLayout(self.layoutGraficoBarraMedia)
+        layoutGraficosVerticais.addLayout(self.layoutGraficoPizzaNotas)
+        layoutInferior.addLayout(layoutGraficosVerticais)
+
+        layoutScroll.addWidget(containerInferior)
+
+        self.comboCursoGraficos.currentTextChanged.connect(
+            self._atualizarGraficoMultiLinha
+        )
+        self.comboAnoGraficosAgrupados.currentTextChanged.connect(
+            self._atualizarGraficosAgrupados
+        )
+
+        self._popularFiltrosGraficos()
+        self._atualizarGraficoMultiLinha()
+        self._atualizarGraficosAgrupados()
+
+        return pagina
+
+    def _popularFiltrosGraficos(self):
+        todosOsAlunos = [
+            aluno
+            for listaAnual in self.extratorDeDados.dados.values()
+            for aluno in listaAnual
+        ]
+        # Popula o filtro de cursos
+        cursos = sorted(
+            list(
+                {
+                    s.get("curso", "N/A")
+                    for s in todosOsAlunos
+                    if s.get("curso", "N/A") != "N/A"
+                }
+            )
+        )
+        self.comboCursoGraficos.addItems(cursos)
+
+        # Popula o filtro de anos
+        anos = sorted(list(self.extratorDeDados.dados.keys()), reverse=True)
+        self.comboAnoGraficosAgrupados.addItem("Todos")
+        self.comboAnoGraficosAgrupados.addItems(anos)
+
+    def _atualizarGraficosAgrupados(self):
+        anoSelecionado = self.comboAnoGraficosAgrupados.currentText()
+        alunosFiltrados = (
+            self.extratorDeDados.getDadosPorAno(anoSelecionado)
+            if anoSelecionado != "Todos"
+            else [a for la in self.extratorDeDados.dados.values() for a in la]
+        )
+
+        self._atualizarGraficoBarraMediaPorCurso(alunosFiltrados, anoSelecionado)
+        self._atualizarGraficoPizzaNotas(alunosFiltrados, anoSelecionado)
+
+    def _atualizarGraficoBarraMediaPorCurso(self, alunos, ano):
+        while self.layoutGraficoBarraMedia.count():
+            item = self.layoutGraficoBarraMedia.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-        cursoSelecionado = self.comboCursoLinha.currentText()
-        demandaSelecionada = self.comboDemandaLinha.currentText()
-        alunosFiltrados = self.extratorDeDados.getData(
-            course=cursoSelecionado, demand=demandaSelecionada
-        )
-        notasPorAno = defaultdict(list)
-        for aluno in alunosFiltrados:
+
+        titulo = f"Top 20 Cursos por Nota Média ({ano})"
+        notasPorCurso = defaultdict(list)
+        for aluno in alunos:
+            curso = aluno.get("curso", "N/A")
             notaStr = aluno.get("nota", "N/A").replace(",", ".")
-            ano = self._extrairAnoDaInscricao(aluno.get("inscricao", ""))
-            if ano and notaStr != "N/A":
+            if curso != "N/A" and notaStr != "N/A":
                 try:
-                    notasPorAno[ano].append(float(notaStr))
+                    notasPorCurso[curso].append(float(notaStr))
                 except ValueError:
                     continue
-        dadosParaGrafico = {
-            ano: mean(notas) for ano, notas in notasPorAno.items() if notas
+
+        mediaPorCurso = {
+            curso: mean(notas) for curso, notas in notasPorCurso.items() if notas
         }
-        widgetGrafico = self.geradorDeGraficos.criarGraficoDeLinha(
-            dados=dadosParaGrafico,
+
+        top20Cursos = dict(
+            sorted(mediaPorCurso.items(), key=lambda item: item[1], reverse=True)[:20]
+        )
+
+        graficoBarras = self.geradorDeGraficos.criarGraficoDeBarraNotaMediaPorCurso(
+            dados=top20Cursos, titulo=titulo
+        )
+
+        graficoBarras.setMinimumHeight(800)
+
+        self.layoutGraficoBarraMedia.addWidget(graficoBarras)
+
+    def _atualizarGraficoPizzaNotas(self, alunos, ano):
+        while self.layoutGraficoPizzaNotas.count():
+            item = self.layoutGraficoPizzaNotas.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        titulo = f"Distribuição de Notas ({ano})"
+        faixas = {
+            "400-500": 0,
+            "500-600": 0,
+            "600-700": 0,
+            "700-800": 0,
+            "800-900": 0,
+            "900-1000": 0,
+        }
+
+        for aluno in alunos:
+            notaStr = aluno.get("nota", "N/A").replace(",", ".")
+            if notaStr != "N/A":
+                try:
+                    nota = float(notaStr)
+                    if 400 <= nota < 500:
+                        faixas["400-500"] += 1
+                    elif 500 <= nota < 600:
+                        faixas["500-600"] += 1
+                    elif 600 <= nota < 700:
+                        faixas["600-700"] += 1
+                    elif 700 <= nota < 800:
+                        faixas["700-800"] += 1
+                    elif 800 <= nota < 900:
+                        faixas["800-900"] += 1
+                    elif 900 <= nota <= 1000:
+                        faixas["900-1000"] += 1
+                except ValueError:
+                    continue
+
+        graficoPizza = self.geradorDeGraficos.criarGraficoPizzaDistribuicaoNotas(
+            dados=faixas, titulo=titulo
+        )
+
+        graficoPizza.setMinimumHeight(800)
+
+        self.layoutGraficoPizzaNotas.addWidget(graficoPizza)
+
+    def _atualizarGraficoMultiLinha(self):
+        while self.layoutGraficoMultiLinha.count():
+            item = self.layoutGraficoMultiLinha.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        cursoSelecionado = self.comboCursoGraficos.currentText()
+        if not cursoSelecionado:
+            return
+
+        alunosFiltrados = self.extratorDeDados.getDados(curso=cursoSelecionado)
+        notasPorCotaPorAno = defaultdict(lambda: defaultdict(list))
+
+        for aluno in alunosFiltrados:
+            cota = aluno.get("cota", "N/A")
+            notaStr = aluno.get("nota", "N/A").replace(",", ".")
+            ano = aluno.get("ano")
+            if cota != "N/A" and notaStr != "N/A" and ano and ano.isdigit():
+                try:
+                    notasPorCotaPorAno[cota][ano].append(float(notaStr))
+                except (ValueError, IndexError):
+                    continue
+
+        dadosParaGrafico = defaultdict(dict)
+
+        for cota, notasPorAno in notasPorCotaPorAno.items():
+            for ano, notas in notasPorAno.items():
+                if notas:
+                    dadosParaGrafico[cota][ano] = mean(notas)
+
+        widgetGrafico = self.geradorDeGraficos.criarGraficoDeLinhaMultiplasSeries(
+            dadosSeries=dadosParaGrafico,
             titulo=cursoSelecionado,
-            subtitulo=f"Demanda: {demandaSelecionada}",
             eixoXTitulo="Ano",
             eixoYTitulo="Nota Média",
         )
-        self.layoutGraficoLinha.addWidget(widgetGrafico)
 
-    def _criarPaginaGraficoBarra(self):
-        pagina = QWidget()
-        layoutPrincipal = QVBoxLayout(pagina)
+        widgetGrafico.setMinimumHeight(900)
 
-        headerWidget = self._criarHeaderAnaliseBarra()
-        layoutPrincipal.addWidget(headerWidget)
-
-        self.layoutGraficoBarra = QVBoxLayout()
-        layoutPrincipal.addLayout(self.layoutGraficoBarra)
-
-        self._popularFiltrosBarra()
-        self._atualizarGraficoBarra()
-        return pagina
-
-    def _criarHeaderAnaliseBarra(self):
-        headerWidget = QWidget()
-        layoutHeader = QVBoxLayout(headerWidget)
-        layoutTitulo = QHBoxLayout()
-        rotuloTitulo = QLabel("Análise de Competitividade por Demanda")
-        rotuloTitulo.setFont(QFont("Arial", 16, QFont.Weight.Bold))
-        botaoVoltar = QPushButton("← Voltar para Visão Geral")
-        botaoVoltar.clicked.connect(
-            lambda: self.stackedWidget.setCurrentWidget(self.paginaPrincipal)
-        )
-        layoutTitulo.addWidget(rotuloTitulo)
-        layoutTitulo.addStretch()
-        layoutTitulo.addWidget(botaoVoltar)
-        layoutHeader.addLayout(layoutTitulo)
-        layoutFiltros = QHBoxLayout()
-        containerCurso, self.comboCursoBarra = self._criarFiltroComboBox(
-            "Selecione o Curso:"
-        )
-        self.comboCursoBarra.currentTextChanged.connect(self._atualizarGraficoBarra)
-        layoutFiltros.addWidget(containerCurso)
-        layoutFiltros.addStretch()
-        layoutHeader.addLayout(layoutFiltros)
-        return headerWidget
-
-    def _atualizarGraficoBarra(self):
-        while self.layoutGraficoBarra.count():
-            item = self.layoutGraficoBarra.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
-        cursoSelecionado = self.comboCursoBarra.currentText()
-        if not cursoSelecionado:
-            return
-
-        alunosDoCurso = self.extratorDeDados.getData(course=cursoSelecionado)
-
-        codigoParaGrupo = {
-            codigo: grupo
-            for grupo, codigos in self.extratorDeDados.DEMAND_MAP.items()
-            for codigo in codigos
-            if codigo
-        }
-        nomesDeExibicao = self._criarNomesDeExibicaoParaDemandas()
-
-        notasPorGrupo = defaultdict(list)
-        for aluno in alunosDoCurso:
-            demanda = aluno.get("concorrencia", "N/A").upper()
-            notaStr = aluno.get("nota", "N/A").replace(",", ".")
-
-            if demanda and demanda in codigoParaGrupo and notaStr != "N/A":
-                grupo = codigoParaGrupo[demanda]
-                try:
-                    notasPorGrupo[grupo].append(float(notaStr))
-                except ValueError:
-                    continue
-
-        dadosParaGrafico = {}
-        for grupo, notas in notasPorGrupo.items():
-            if notas:
-                nomeDeExibicao = nomesDeExibicao.get(grupo, grupo)
-                if nomeDeExibicao:
-                    dadosParaGrafico[nomeDeExibicao] = min(notas)
-
-        widgetGrafico = self.geradorDeGraficos.criarGraficoDeBarra(
-            dados=dadosParaGrafico, titulo=cursoSelecionado
-        )
-        self.layoutGraficoBarra.addWidget(widgetGrafico)
-
-    def _criarFiltroComboBox(self, textoRotulo):
-        container = QWidget()
-        layout = QHBoxLayout(container)
-        layout.addWidget(QLabel(textoRotulo))
-        comboBox = QComboBox()
-        comboBox.setMinimumWidth(300)
-        layout.addWidget(comboBox)
-        return container, comboBox
-
-    def _popularFiltrosCursos(self, comboBox):
-        todosOsAlunos = [
-            aluno
-            for listaAnual in self.extratorDeDados.data.values()
-            for aluno in listaAnual
-        ]
-
-        dadosBrutosCursos = sorted(
-            {s.get("curso", "") for s in todosOsAlunos if s.get("curso", "")}
-        )
-
-        cursos = [s for s in dadosBrutosCursos if not re.search(r"\d", s)]
-        comboBox.addItems(cursos)
-
-    def _popularFiltrosLinha(self):
-        self._popularFiltrosCursos(self.comboCursoLinha)
-        todosOsAlunos = [
-            aluno
-            for listaAnual in self.extratorDeDados.data.values()
-            for aluno in listaAnual
-        ]
-        demandas = sorted(
-            {
-                s.get("concorrencia", "")
-                for s in todosOsAlunos
-                if s.get("concorrencia", "")
-            }
-        )
-        self.comboDemandaLinha.addItems(demandas)
-
-    def _popularFiltrosBarra(self):
-        self._popularFiltrosCursos(self.comboCursoBarra)
-
-    def _criarNomesDeExibicaoParaDemandas(self):
-        mapa = {}
-        for grupo, codigos in self.extratorDeDados.DEMAND_MAP.items():
-            if grupo == "ampla_concorrencia":
-                mapa[grupo] = "AC"
-                continue
-
-            prioridade = [
-                c for c in codigos if "_" in c or c.startswith("V") or c == "L14"
-            ]
-
-            if prioridade:
-                mapa[grupo] = prioridade[0]
-            elif codigos:
-                mapa[grupo] = sorted(list(codigos))[0]
-            else:
-                mapa[grupo] = grupo
-        return mapa
-
-    def _extrairAnoDaInscricao(self, inscricao):
-        if inscricao and len(inscricao) >= 4:
-            primeirosDigitos = inscricao[:2]
-            if primeirosDigitos.isdigit():
-                return "20" + primeirosDigitos
-        return None
+        self.layoutGraficoMultiLinha.addWidget(widgetGrafico)
