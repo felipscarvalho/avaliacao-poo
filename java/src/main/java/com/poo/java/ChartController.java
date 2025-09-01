@@ -21,10 +21,6 @@ public class ChartController implements Initializable {
     
     @FXML private PieChart notasPieChart;
     
-    @FXML private AreaChart<String, Number> demandAreaChart;
-    @FXML private CategoryAxis demandXAxis;
-    @FXML private NumberAxis demandYAxis;
-    
     @FXML private ComboBox<String> seletorAno;
     @FXML private ComboBox<String> seletorAno2;
     @FXML private ComboBox<String> seletorCurso;
@@ -65,21 +61,16 @@ public class ChartController implements Initializable {
         notaCursoXAxis.setLabel("Ano");
         notaCursoYAxis.setLabel("Média");
         
-        demandXAxis.setLabel("Ano");
-        demandYAxis.setLabel("Demanda");
-        
         // Configurar propriedades dos gráficos
         cursoBarChart.setLegendVisible(false);
         notasPieChart.setLegendVisible(true);
         notaCursoLineChart.setCreateSymbols(true);
-        demandAreaChart.setCreateSymbols(false);
     }
     
     private void carregarDados() {
         carregarCursoBarChartData();
         carregarNotasPieChartData();
         carregarNotaCursoLineChartData();
-        loadAreaChartData();
     }
     
     private void carregarCursoBarChartData() {
@@ -114,30 +105,6 @@ public class ChartController implements Initializable {
         });
 
         notasPieChart.setData(dados);
-    }
-    
-    private void loadAreaChartData() {
-        XYChart.Series<String, Number> engenharia = new XYChart.Series<>();
-        engenharia.setName("Engenharia");
-        engenharia.getData().addAll(
-            new XYChart.Data<>("2020", 120),
-            new XYChart.Data<>("2021", 135),
-            new XYChart.Data<>("2022", 150),
-            new XYChart.Data<>("2023", 145),
-            new XYChart.Data<>("2024", 160)
-        );
-        
-        XYChart.Series<String, Number> medicina = new XYChart.Series<>();
-        medicina.setName("Medicina");
-        medicina.getData().addAll(
-            new XYChart.Data<>("2020", 100),
-            new XYChart.Data<>("2021", 110),
-            new XYChart.Data<>("2022", 120),
-            new XYChart.Data<>("2023", 115),
-            new XYChart.Data<>("2024", 125)
-        );
-        
-        demandAreaChart.getData().addAll(engenharia, medicina);
     }
     
     @FXML

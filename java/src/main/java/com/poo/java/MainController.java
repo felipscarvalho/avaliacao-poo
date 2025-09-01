@@ -39,6 +39,6 @@ public class MainController implements Initializable {
         
         Double media = totalNotas / students.size();
         
-        mediaGeralLabel.setText(String.format("%.1f%%", media));
+        mediaGeralLabel.setText(String.format("%.1f", media));
     }
 }

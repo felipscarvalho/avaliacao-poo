@@ -93,29 +93,6 @@
                         </VBox>
                      </children>
                   </VBox>
-                  
-                  
-                  <HBox spacing="15" alignment="CENTER" style="-fx-background-color: white; -fx-padding: 10 0 0 0;">
-                    <children>
-                        <Label text="Estatísticas ao Longo dos Anos" style="-fx-font-weight: bold; -fx-font-size: 22px;" />
-                    </children>
-                  </HBox>
-                  
-                  <!-- Row 3: Area chart -->
-                  <VBox style="-fx-background-color: white; -fx-padding: 0 20 20 20; -fx-background-radius: 8;">
-                     <children>
-<!--                        <Label text="Demanda por Cota ao Longo do Tempo" 
-                               style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 0 0 10 0;" />-->
-                        <AreaChart fx:id="demandAreaChart" prefHeight="300" title="Demanda por Cota ao Longo dos Anos">
-                           <xAxis>
-                              <CategoryAxis fx:id="demandXAxis" />
-                           </xAxis>
-                           <yAxis>
-                              <NumberAxis fx:id="demandYAxis" />
-                           </yAxis>
-                        </AreaChart>
-                     </children>
-                  </VBox>
                </children>
             </VBox>
          </content>
