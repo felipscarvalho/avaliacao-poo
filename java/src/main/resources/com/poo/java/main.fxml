@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" 
+            fx:controller="com.poo.java.MainController"
+            style="-fx-background-color: #f5f5f5;">
+   
+   <top>
+      <HBox alignment="CENTER" style="-fx-background-color: #2c3e50; -fx-padding: 20;">
+         <children>
+            <Label text="Sisu BI" 
+                   style="-fx-text-fill: white; -fx-font-size: 28px; -fx-font-weight: bold;" />
+         </children>
+      </HBox>
+   </top>
+   
+   <center>
+      <TabPane fx:id="mainTabPane" 
+               style="-fx-background-color: white; -fx-border-color: #bdc3c7; -fx-border-width: 1;"
+               tabClosingPolicy="UNAVAILABLE">
+         
+         <tabs>
+            <Tab text="Dashboard">
+               <content>
+                  <VBox alignment="CENTER" spacing="20" style="-fx-padding: 40;">
+                     <children>
+                        <Label text="Bem-vindo ao Sistema!" 
+                               style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" />
+                        <Label text="Selecione uma das abas para começar" 
+                               style="-fx-font-size: 16px; -fx-text-fill: #7f8c8d;" />
+                        
+                        <!-- Cards com estatísticas -->
+                        <HBox spacing="30" alignment="CENTER">
+                           <children>
+                              <VBox alignment="CENTER" spacing="10" 
+                                    style="-fx-background-color: #3498db; -fx-padding: 20; -fx-background-radius: 10;">
+                                 <children>
+                                    <Label text="Total de Aprovados" 
+                                           style="-fx-text-fill: white; -fx-font-size: 14px;" />
+                                    <Label fx:id="totalAprovadosLabel"
+                                           style="-fx-text-fill: white; -fx-font-size: 32px; -fx-font-weight: bold;" />
+                                 </children>
+                              </VBox>
+                              
+                              <VBox alignment="CENTER" spacing="10" 
+                                    style="-fx-background-color: #8a2be3; -fx-padding: 20; -fx-background-radius: 10;">
+                                 <children>
+                                    <Label text="Anos Analisados" 
+                                           style="-fx-text-fill: white; -fx-font-size: 14px;" />
+                                    <Label text="6" 
+                                           style="-fx-text-fill: white; -fx-font-size: 32px; -fx-font-weight: bold;" />
+                                 </children>
+                              </VBox>
+                              
+                              <VBox alignment="CENTER" spacing="10" 
+                                    style="-fx-background-color: #27ae60; -fx-padding: 20; -fx-background-radius: 10;">
+                                 <children>
+                                    <Label text="Média Geral" 
+                                           style="-fx-text-fill: white; -fx-font-size: 14px;" />
+                                    <Label fx:id="mediaGeralLabel" text="7.8" 
+                                           style="-fx-text-fill: white; -fx-font-size: 32px; -fx-font-weight: bold;" />
+                                 </children>
+                              </VBox>
+                           </children>
+                        </HBox>
+                     </children>
+                  </VBox>
+               </content>
+            </Tab>
+            
+            <Tab text="Estudantes">
+               <content>
+                  <fx:include source="table.fxml" />
+               </content>
+            </Tab>
+            
+            <Tab text="Gráficos">
+               <content>
+                  <fx:include source="chart.fxml" />
+               </content>
+            </Tab>
+         </tabs>
+      </TabPane>
+   </center>
+   
+   <bottom>
+      <HBox alignment="CENTER" style="-fx-background-color: #ecf0f1; -fx-padding: 15;">
+         <children>
+            <Label text="© 2025 Sisu BI - Versão 1.0" 
+                   style="-fx-text-fill: #7f8c8d; -fx-font-size: 12px;" />
+         </children>
+      </HBox>
+   </bottom>
+</BorderPane>

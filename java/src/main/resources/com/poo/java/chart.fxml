@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" 
+      fx:controller="com.poo.java.ChartController"
+      style="-fx-padding: 20;">
+   <children>
+      <!-- Container dos Gráficos -->
+      <ScrollPane style="-fx-background-color: white;"  fitToWidth="true">
+         <content>
+            <VBox style="-fx-background-color: white;" spacing="30">
+               <children>
+                  <VBox spacing="20" alignment="CENTER">
+                     <children>
+                         
+                        <!-- Gráfico de Barra -->
+                        <VBox style="-fx-background-color: white; -fx-padding: 0 20 20 20; -fx-background-radius: 8;" >
+                           <children>
+                                <HBox spacing="15" alignment="CENTER" style="-fx-padding: 20 0 0 0;">
+                                    <children>
+                                        <Label text="Nota Média por Curso" style="-fx-padding: 0 0 10 0; -fx-font-weight: bold; -fx-font-size: 22px;" />
+                                    </children>
+                                </HBox>
+                                <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 0;">
+                                    <children>
+                                        <Label text="Filtros:" style="-fx-font-weight: bold; -fx-font-size: 14px;" />
+                                        <ComboBox fx:id="seletorAno" promptText="Selecionar Ano" prefWidth="150" />
+                                        <Button fx:id="refreshButton1" text="Atualizar" onAction="#recarregarGraficoNotaMedia" style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-padding: 5 16;" />
+                                    </children>
+                                </HBox>
+                                <ScrollPane minHeight="470"  hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" style="-fx-background-color: white">
+                                    <content>
+                                        <BarChart fx:id="cursoBarChart" style="-fx-background-color: white" minHeight="450"  minWidth="3200">
+                                            <xAxis>
+                                                <CategoryAxis fx:id="cursoXAxis" />
+                                            </xAxis>
+                                            <yAxis>
+                                                <NumberAxis fx:id="cursoYAxis" />
+                                            </yAxis>
+                                        </BarChart>
+                                    </content>
+                                </ScrollPane>
+                            </children>
+                        </VBox>
+                        
+                        <!-- Gráfico de Linha -->
+                        <VBox style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 8;">
+                            <children>
+                                <HBox spacing="15" alignment="CENTER" style="-fx-padding: 20 0 0 0;">
+                                    <children>
+                                        <Label text="Nota Média por Curso e por Cota ao Longo dos Anos" style="-fx-padding: 0 0 10 0; -fx-font-weight: bold; -fx-font-size: 22px;" />
+                                    </children>
+                                </HBox>
+                                <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 0;">
+                                    <children>
+                                        <Label text="Filtros:" style="-fx-font-weight: bold; -fx-font-size: 14px;" />
+                                        <ComboBox fx:id="seletorCurso" promptText="Selecionar Curso" prefWidth="150" />
+                                        <Button fx:id="refreshButton2" text="Atualizar" onAction="#recarregarGraficoCurso" style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-padding: 5 16;" />
+                                    </children>
+                                </HBox>
+                                <LineChart fx:id="notaCursoLineChart" minHeight="450">
+                                    <xAxis>
+                                        <CategoryAxis fx:id="notaCursoXAxis" />
+                                    </xAxis>
+                                    <yAxis>
+                                        <NumberAxis fx:id="notaCursoYAxis" />
+                                    </yAxis>
+                                </LineChart>
+                            </children>
+                        </VBox>
+                        
+                        <!-- Gráfico de Pizza -->
+                        <VBox style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 8;">
+                            <children>
+                                <HBox spacing="15" alignment="CENTER" style="-fx-padding: 20 0 0 0;">
+                                    <children>
+                                        <Label text="Proporção de Intervalos de Notas" style="-fx-padding: 0 0 10 0; -fx-font-weight: bold; -fx-font-size: 22px;" />
+                                    </children>
+                                </HBox>
+                                <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 0;">
+                                    <children>
+                                        <Label text="Filtros:" style="-fx-font-weight: bold; -fx-font-size: 14px;" />
+                                        <ComboBox fx:id="seletorAno2" promptText="Selecionar Ano" prefWidth="150" />
+                                        <Button fx:id="refreshButton3" text="Atualizar" onAction="#recarregarGraficoNota" style="-fx-background-color: #007bff; -fx-text-fill: white; -fx-padding: 5 16;" />
+                                    </children>
+                                </HBox>
+                                <PieChart fx:id="notasPieChart"/>
+                            </children>
+                        </VBox>
+                     </children>
+                  </VBox>
+                  
+                  
+                  <HBox spacing="15" alignment="CENTER" style="-fx-background-color: white; -fx-padding: 10 0 0 0;">
+                    <children>
+                        <Label text="Estatísticas ao Longo dos Anos" style="-fx-font-weight: bold; -fx-font-size: 22px;" />
+                    </children>
+                  </HBox>
+                  
+                  <!-- Row 3: Area chart -->
+                  <VBox style="-fx-background-color: white; -fx-padding: 0 20 20 20; -fx-background-radius: 8;">
+                     <children>
+<!--                        <Label text="Demanda por Cota ao Longo do Tempo" 
+                               style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 0 0 10 0;" />-->
+                        <AreaChart fx:id="demandAreaChart" prefHeight="300" title="Demanda por Cota ao Longo dos Anos">
+                           <xAxis>
+                              <CategoryAxis fx:id="demandXAxis" />
+                           </xAxis>
+                           <yAxis>
+                              <NumberAxis fx:id="demandYAxis" />
+                           </yAxis>
+                        </AreaChart>
+                     </children>
+                  </VBox>
+               </children>
+            </VBox>
+         </content>
+      </ScrollPane>
+   </children>
+</VBox>
