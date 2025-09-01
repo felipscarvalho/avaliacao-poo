@@ -10,3 +10,5 @@ venv/
 .venv/
 
 *.env
+/java/sisu-bi/target/
+/java/target/
